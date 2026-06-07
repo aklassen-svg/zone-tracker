@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Zone Minutes Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f6f2; --surface: #ffffff; --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.12); --text: #1a1a18; --text2: #6b6b66; --text3: #a0a099;
+    --green: #3B6D11; --green-bg: #EAF3DE; --green-mid: #639922;
+    --amber: #BA7517; --amber-bg: #FAEEDA; --amber-mid: #EF9F27;
+    --blue: #185FA5; --blue-bg: #E6F1FB; --blue-mid: #378ADD;
+    --red: #A32D2D; --red-bg: #FCEBEB;
+    --teal: #0F6E56; --teal-bg: #E1F5EE; --teal-mid: #1D9E75;
+    --radius: 14px; --radius-sm: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18; --surface: #252523; --surface2: #2e2e2b;
+      --border: rgba(255,255,255,0.1); --text: #f0efe9; --text2: #a0a099; --text3: #6b6b66;
+      --green: #C0DD97; --green-bg: #27500A; --green-mid: #97C459;
+      --amber: #FAC775; --amber-bg: #633806; --amber-mid: #EF9F27;
+      --blue: #B5D4F4; --blue-bg: #0C447C; --blue-mid: #378ADD;
+      --red: #F7C1C1; --red-bg: #791F1F;
+      --teal: #9FE1CB; --teal-bg: #085041; --teal-mid: #1D9E75;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 40px; }
+  header { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 16px 20px 12px; position: sticky; top: 0; z-index: 100; }
+  header h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+  header p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .nav { display: flex; background: var(--surface2); border-radius: 10px; padding: 3px; margin: 16px 20px 0; }
+  .nav button { flex: 1; padding: 8px 4px; font-size: 13px; border: none; background: transparent; color: var(--text2); border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.15s; }
+  .nav button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+  .page { display: none; padding: 20px; }
+  .page.active { display: block; }
+  .card { background: var(--surface); border-radius: var(--radius); border: 0.5px solid var(--border); padding: 18px; margin-bottom: 14px; }
+  .card-label { font-size: 11px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+  .goal-ring-wrap { display: flex; align-items: center; gap: 20px; }
+  .goal-stats { flex: 1; }
+  .goal-stat { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .goal-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .goal-stat-info { flex: 1; }
+  .goal-stat-label { font-size: 12px; color: var(--text2); }
+  .goal-stat-val { font-size: 16px; font-weight: 600; }
+  .day-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .day-row:last-child { border-bottom: none; }
+  .day-name { width: 36px; font-size: 13px; font-weight: 600; color: var(--text2); flex-shrink: 0; }
+  .day-bars { flex: 1; }
+  .bar-wrap { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .bar-track { flex: 1; height: 7px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+  .bar-label { font-size: 11px; color: var(--text3); min-width: 28px; text-align: right; }
+  .zone-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .zone-row:last-child { border-bottom: none; }
+  .zone-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .zone-info { flex: 1; margin-left: 10px; }
+  .zone-name { font-size: 14px; font-weight: 500; }
+  .zone-range { font-size: 12px; color: var(--text2); }
+  .zone-mins { font-size: 14px; font-weight: 600; }
+  input[type=number], input[type=text] { background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 15px; color: var(--text); width: 100%; margin-top: 6px; }
+  input[type=number]:focus, input[type=text]:focus { outline: none; border-color: var(--blue-mid); }
+  label { font-size: 13px; color: var(--text2); display: block; }
+  .field { margin-bottom: 14px; }
+  .btn { display: block; width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none; font-size: 15px; font-weight: 600; cursor: pointer; text-align: center; transition: opacity 0.15s; margin-top: 8px; }
+  .btn:active { opacity: 0.75; }
+  .btn-primary { background: var(--teal-mid); color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); }
+  .badge-blue  { background: var(--blue-bg);  color: var(--blue); }
+  .status-msg { font-size: 13px; color: var(--text2); text-align: center; padding: 20px; }
+  .error-msg { background: var(--red-bg); color: var(--red); border-radius: var(--radius-sm); padding: 12px; font-size: 13px; margin: 10px 0; }
+  .success-msg { background: var(--green-bg); color: var(--green); border-radius: var(--radius-sm); padding: 12px; font-size: 13px; margin: 10px 0; }
+  .info-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+  .info-row:last-child { border-bottom: none; }
+  .info-row-num { width: 22px; height: 22px; background: var(--teal-bg); color: var(--teal); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .info-row-text { flex: 1; color: var(--text2); line-height: 1.5; }
+  .info-row-text strong { color: var(--text); }
+  .copy-val { font-family: monospace; font-size: 12px; background: var(--surface2); border: 0.5px solid var(--border); border-radius: 5px; padding: 8px 10px; display: block; margin-top: 4px; word-break: break-all; color: var(--text); }
+  .spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--teal-mid); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .week-selector { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .week-btn { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; font-size: 13px; cursor: pointer; color: var(--text); }
+  .week-btn:disabled { opacity: 0.35; cursor: default; }
+  .week-label { font-size: 13px; color: var(--text2); font-weight: 500; }
+  .cdc-banner { background: var(--teal-bg); border-radius: var(--radius-sm); padding: 12px 14px; font-size: 13px; color: var(--teal); margin-bottom: 14px; line-height: 1.5; }
+  .cdc-banner strong { color: var(--teal); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Zone Minutes Tracker</h1>
+  <p id="header-sub">Fitbit via Google Health API</p>
+</header>
+
+<div class="nav">
+  <button class="active" onclick="showPage('dashboard')">This week</button>
+  <button onclick="showPage('days')">Days</button>
+  <button onclick="showPage('zones')">Zones</button>
+  <button onclick="showPage('setup')">Setup</button>
+</div>
+
+<div class="page active" id="page-dashboard">
+  <div id="dash-content">
+    <div class="status-msg">Connect to Google in the <strong>Setup</strong> tab to get started.</div>
+  </div>
+</div>
+
+<div class="page" id="page-days">
+  <div id="days-content">
+    <div class="status-msg">Connect to Google in the <strong>Setup</strong> tab first.</div>
+  </div>
+</div>
+
+<div class="page" id="page-zones">
+  <div id="zones-content">
+    <div class="status-msg">Connect to Google in the <strong>Setup</strong> tab first.</div>
+  </div>
+</div>
+
+<div class="page" id="page-setup">
+  <div class="card">
+    <div class="card-label">Step 1 — Enter your Client ID</div>
+    <div class="info-row">
+      <div class="info-row-num">1</div>
+      <div class="info-row-text">Go to <strong>console.cloud.google.com</strong>, open your project, and go to <strong>APIs &amp; Services → Credentials</strong>.</div>
+    </div>
+    <div class="info-row">
+      <div class="info-row-num">2</div>
+      <div class="info-row-text">Click your OAuth 2.0 Client ID name and copy the <strong>Client ID</strong> value (ends in <code>.apps.googleusercontent.com</code>).</div>
+    </div>
+    <div class="info-row">
+      <div class="info-row-num">3</div>
+      <div class="info-row-text">Also go to <strong>APIs &amp; Services → OAuth consent screen → Audience</strong> and make sure your Gmail address is listed as a test user.</div>
+    </div>
+    <div class="info-row">
+      <div class="info-row-num">4</div>
+      <div class="info-row-text">Paste your Client ID below and click <strong>Connect to Google</strong>.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Step 2 — Connect</div>
+    <div class="field">
+      <label>Google OAuth Client ID</label>
+      <input type="text" id="client-id-input" placeholder="e.g. 123456789-abc.apps.googleusercontent.com" />
+    </div>
+    <div id="connect-msg"></div>
+    <button class="btn btn-primary" onclick="startAuth()">Connect to Google</button>
+    <button class="btn btn-outline" id="disconnect-btn" onclick="disconnect()" style="display:none">Disconnect account</button>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Step 3 — Your heart rate zones</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.5">
+      Set the BPM thresholds that define your zones. Minutes below your moderate floor won't count toward the CDC goal.
+    </p>
+    <div class="field">
+      <label>Moderate zone starts at (BPM)</label>
+      <input type="number" id="zone-mod" value="100" min="50" max="200" />
+    </div>
+    <div class="field">
+      <label>Vigorous zone starts at (BPM)</label>
+      <input type="number" id="zone-vig" value="130" min="50" max="220" />
+    </div>
+    <div class="field">
+      <label>Max heart rate (BPM)</label>
+      <input type="number" id="zone-max" value="185" min="100" max="250" />
+    </div>
+    <button class="btn btn-primary" onclick="saveZones()">Save zones</button>
+    <div id="zones-save-msg"></div>
+  </div>
+</div>
+
+<script>
+const GOOGLE_AUTH = 'https://accounts.google.com/o/oauth2/v2/auth';
+const SCOPE = 'https://www.googleapis.com/auth/health.activity.read';
+const REDIRECT_URI = window.location.href.split('?')[0].split('#')[0];
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+let accessToken = null;
+let weekOffset = 0;
+
+function $(id) { return document.getElementById(id); }
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  $('page-' + name).classList.add('active');
+  ['dashboard','days','zones','setup'].forEach((p, i) => {
+    if (p === name) document.querySelectorAll('.nav button')[i].classList.add('active');
+  });
+  if (name === 'dashboard' && accessToken) renderDashboard();
+  if (name === 'days' && accessToken) renderDays();
+  if (name === 'zones' && accessToken) renderZonesPage();
+}
+
+function getZones() {
+  return {
+    mod: parseInt(localStorage.getItem('zone_mod') || '100'),
+    vig: parseInt(localStorage.getItem('zone_vig') || '130'),
+    max: parseInt(localStorage.getItem('zone_max') || '185'),
+  };
+}
+
+function saveZones() {
+  const mod = parseInt($('zone-mod').value);
+  const vig = parseInt($('zone-vig').value);
+  const mx  = parseInt($('zone-max').value);
+  if (vig <= mod) { $('zones-save-msg').innerHTML = '<div class="error-msg">Vigorous must be higher than moderate.</div>'; return; }
+  localStorage.setItem('zone_mod', mod);
+  localStorage.setItem('zone_vig', vig);
+  localStorage.setItem('zone_max', mx);
+  $('zones-save-msg').innerHTML = '<div class="success-msg">Zones saved!</div>';
+}
+
+function loadSetupUI() {
+  const saved = localStorage.getItem('google_client_id');
+  const z = getZones();
+  if (saved) { $('client-id-input').value = saved; $('disconnect-btn').style.display = 'block'; }
+  $('zone-mod').value = z.mod;
+  $('zone-vig').value = z.vig;
+  $('zone-max').value = z.max;
+}
+
+async function generateCodeVerifier() {
+  const array = new Uint8Array(48);
+  crypto.getRandomValues(array);
+  return btoa(String.fromCharCode(...array)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function generateCodeChallenge(verifier) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+async function startAuth() {
+  const id = $('client-id-input').value.trim();
+  if (!id) { $('connect-msg').innerHTML = '<div class="error-msg">Please enter your Client ID first.</div>'; return; }
+  localStorage.setItem('google_client_id', id);
+  const verifier = await generateCodeVerifier();
+  const challenge = await generateCodeChallenge(verifier);
+  localStorage.setItem('pkce_verifier', verifier);
+  const params = new URLSearchParams({
+    client_id: id,
+    redirect_uri: REDIRECT_URI,
+    response_type: 'code',
+    scope: SCOPE,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    access_type: 'offline',
+    prompt: 'consent'
+  });
+  window.location.href = GOOGLE_AUTH + '?' + params.toString();
+}
+
+async function exchangeCode(code) {
+  const clientId = localStorage.getItem('google_client_id');
+  const verifier = localStorage.getItem('pkce_verifier');
+  const resp = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      code,
+      code_verifier: verifier,
+      grant_type: 'authorization_code',
+      redirect_uri: REDIRECT_URI
+    })
+  });
+  const data = await resp.json();
+  if (data.access_token) {
+    localStorage.setItem('google_token', data.access_token);
+    if (data.refresh_token) localStorage.setItem('google_refresh', data.refresh_token);
+    accessToken = data.access_token;
+  } else {
+    throw new Error(data.error_description || 'Token exchange failed');
+  }
+}
+
+async function refreshAccessToken() {
+  const clientId = localStorage.getItem('google_client_id');
+  const refreshToken = localStorage.getItem('google_refresh');
+  if (!refreshToken) throw new Error('auth');
+  const resp = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    })
+  });
+  const data = await resp.json();
+  if (data.access_token) {
+    localStorage.setItem('google_token', data.access_token);
+    accessToken = data.access_token;
+  } else {
+    throw new Error('auth');
+  }
+}
+
+function disconnect() {
+  ['google_token','google_refresh','google_client_id','pkce_verifier'].forEach(k => localStorage.removeItem(k));
+  accessToken = null;
+  location.reload();
+}
+
+async function handleCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  if (!code) return false;
+  window.history.replaceState({}, document.title, window.location.pathname);
+  await exchangeCode(code);
+  return true;
+}
+
+function getWeekRange(offset) {
+  const now = new Date();
+  const dow = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - dow + (dow === 0 ? -6 : 1) + offset * 7);
+  monday.setHours(0,0,0,0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { start: monday, end: sunday };
+}
+
+function fmtDate(d) { return d.toISOString().split('T')[0]; }
+function fmtDateShort(d) { return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }); }
+function fmtISO(d) { return d.toISOString().replace('.000Z','Z'); }
+
+async function apiFetch(url) {
+  let resp = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken, Accept: 'application/json' } });
+  if (resp.status === 401) {
+    await refreshAccessToken();
+    resp = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken, Accept: 'application/json' } });
+  }
+  if (!resp.ok) throw new Error('fetch_fail');
+  return resp.json();
+}
+
+async function fetchHRForDay(dateStr) {
+  const start = new Date(dateStr + 'T00:00:00');
+  const end   = new Date(dateStr + 'T23:59:59');
+  const filter = `heart_rate.interval.civil_start_time >= "${fmtISO(start)}" AND heart_rate.interval.civil_start_time <= "${fmtISO(end)}"`;
+  const url = `https://health.googleapis.com/v4/users/me/dataTypes/heart-rate/dataPoints?filter=${encodeURIComponent(filter)}&page_size=1500`;
+  const data = await apiFetch(url);
+  return data.dataPoints || [];
+}
+
+function calcZoneMinutes(dataPoints, zones) {
+  if (!dataPoints || !dataPoints.length) return { mod: 0, vig: 0, rest: 0 };
+  let mod = 0, vig = 0, rest = 0;
+  for (const pt of dataPoints) {
+    const bpm = pt.heartRate?.beatsPerMinute || pt.heartRate?.average || 0;
+    if (!bpm) continue;
+    if (bpm >= zones.vig) vig++;
+    else if (bpm >= zones.mod) mod++;
+    else if (bpm > 40) rest++;
+  }
+  return { mod: Math.round(mod), vig: Math.round(vig), rest: Math.round(rest) };
+}
+
+async function loadWeekData(offset) {
+  const { start, end } = getWeekRange(offset);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const zones = getZones();
+  const days = [];
+  for (let d = new Date(start); d <= end && d <= today; d.setDate(d.getDate() + 1)) {
+    const dateStr = fmtDate(new Date(d));
+    try {
+      const pts = await fetchHRForDay(dateStr);
+      const mins = calcZoneMinutes(pts, zones);
+      days.push({ date: new Date(d), dateStr, ...mins });
+    } catch(e) {
+      if (e.message === 'auth') throw e;
+      days.push({ date: new Date(d), dateStr, mod: 0, vig: 0, rest: 0 });
+    }
+  }
+  return { days, start, end };
+}
+
+function ring(pct, color) {
+  const r = 44, cx = 52, cy = 52, stroke = 9;
+  const circ = 2 * Math.PI * r;
+  const filled = Math.min(pct, 1) * circ;
+  return `<svg width="104" height="104" viewBox="0 0 104 104">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${stroke}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-dasharray="${filled} ${circ}" stroke-dashoffset="${circ/4}" stroke-linecap="round"/>
+    <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"
+      font-size="18" font-weight="700" fill="var(--text)">${Math.round(pct*100)}%</text>
+  </svg>`;
+}
+
+async function renderDashboard() {
+  const content = $('dash-content');
+  content.innerHTML = '<div class="status-msg"><span class="spinner"></span>Loading week data…</div>';
+  try {
+    const { days, start, end } = await loadWeekData(weekOffset);
+    let totalMod = 0, totalVig = 0;
+    for (const d of days) { totalMod += d.mod; totalVig += d.vig; }
+    const modPct = Math.min(totalMod / 150, 1);
+    const vigPct = Math.min(totalVig / 75, 1);
+    const combined = Math.min((totalMod/150 + totalVig/75), 1);
+    const weekLabel = weekOffset === 0 ? 'This week' : `${fmtDateShort(start)} – ${fmtDateShort(end)}`;
+    let badge = combined >= 1 ? '<span class="badge badge-green">Goal met!</span>'
+              : combined >= 0.5 ? '<span class="badge badge-amber">On track</span>'
+              : '<span class="badge badge-blue">Keep going</span>';
+    const zones = getZones();
+    content.innerHTML = `
+      <div class="week-selector">
+        <button class="week-btn" onclick="changeWeek(-1)">‹ Prev</button>
+        <span class="week-label">${weekLabel}</span>
+        <button class="week-btn" onclick="changeWeek(1)" ${weekOffset >= 0 ? 'disabled' : ''}>Next ›</button>
+      </div>
+      <div class="cdc-banner">CDC target: <strong>150 min moderate</strong> or <strong>75 min vigorous</strong> per week — or a combination of both.</div>
+      <div class="card">
+        <div class="card-label">Combined CDC progress ${badge}</div>
+        <div class="goal-ring-wrap">
+          ${ring(combined, 'var(--teal-mid)')}
+          <div class="goal-stats">
+            <div class="goal-stat">
+              <div class="goal-dot" style="background:#3B82F6"></div>
+              <div class="goal-stat-info">
+                <div class="goal-stat-label">Moderate (≥${zones.mod} BPM)</div>
+                <div class="goal-stat-val">${totalMod} / 150 min</div>
+              </div>
+            </div>
+            <div class="goal-stat">
+              <div class="goal-dot" style="background:#EF9F27"></div>
+              <div class="goal-stat-info">
+                <div class="goal-stat-label">Vigorous (≥${zones.vig} BPM)</div>
+                <div class="goal-stat-val">${totalVig} / 75 min</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Moderate minutes</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="flex:1"><div style="background:var(--surface2);border-radius:6px;height:12px;overflow:hidden;"><div style="width:${Math.round(modPct*100)}%;height:100%;background:#3B82F6;border-radius:6px;"></div></div></div>
+          <div style="font-size:14px;font-weight:600;min-width:72px;text-align:right">${totalMod} / 150 min</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Vigorous minutes</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="flex:1"><div style="background:var(--surface2);border-radius:6px;height:12px;overflow:hidden;"><div style="width:${Math.round(vigPct*100)}%;height:100%;background:#EF9F27;border-radius:6px;"></div></div></div>
+          <div style="font-size:14px;font-weight:600;min-width:72px;text-align:right">${totalVig} / 75 min</div>
+        </div>
+      </div>`;
+  } catch(e) {
+    content.innerHTML = `<div class="error-msg">${e.message === 'auth' ? 'Session expired. Please reconnect in Setup.' : 'Error loading data. Check your connection.'}</div>`;
+  }
+}
+
+async function renderDays() {
+  const content = $('days-content');
+  content.innerHTML = '<div class="status-msg"><span class="spinner"></span>Loading week data…</div>';
+  try {
+    const { days, start, end } = await loadWeekData(weekOffset);
+    const zones = getZones();
+    const weekLabel = weekOffset === 0 ? 'This week' : `${fmtDateShort(start)} – ${fmtDateShort(end)}`;
+    let maxMod = 1, maxVig = 1;
+    for (const d of days) { maxMod = Math.max(maxMod, d.mod); maxVig = Math.max(maxVig, d.vig); }
+    let rows = '';
+    for (const d of days) {
+      const modPct = Math.round((d.mod / Math.max(maxMod, 30)) * 100);
+      const vigPct = Math.round((d.vig / Math.max(maxVig, 15)) * 100);
+      rows += `<div class="day-row">
+        <div class="day-name">${DAYS[d.date.getDay()]}</div>
+        <div class="day-bars">
+          <div class="bar-wrap"><div style="width:28px;font-size:11px;color:var(--text3)">Mod</div><div class="bar-track"><div class="bar-fill" style="width:${modPct}%;background:#3B82F6"></div></div><div class="bar-label">${d.mod}m</div></div>
+          <div class="bar-wrap"><div style="width:28px;font-size:11px;color:var(--text3)">Vig</div><div class="bar-track"><div class="bar-fill" style="width:${vigPct}%;background:#EF9F27"></div></div><div class="bar-label">${d.vig}m</div></div>
+        </div>
+      </div>`;
+    }
+    if (!days.length) rows = '<div class="status-msg">No data for this week yet.</div>';
+    content.innerHTML = `
+      <div class="week-selector">
+        <button class="week-btn" onclick="changeWeekDays(-1)">‹ Prev</button>
+        <span class="week-label">${weekLabel}</span>
+        <button class="week-btn" onclick="changeWeekDays(1)" ${weekOffset >= 0 ? 'disabled' : ''}>Next ›</button>
+      </div>
+      <div class="card">
+        <div class="card-label">Daily breakdown — mod ≥${zones.mod} BPM · vig ≥${zones.vig} BPM</div>
+        ${rows}
+      </div>`;
+  } catch(e) {
+    content.innerHTML = `<div class="error-msg">${e.message === 'auth' ? 'Session expired. Please reconnect in Setup.' : 'Error loading data.'}</div>`;
+  }
+}
+
+async function renderZonesPage() {
+  const content = $('zones-content');
+  content.innerHTML = '<div class="status-msg"><span class="spinner"></span>Loading week data…</div>';
+  try {
+    const { days } = await loadWeekData(weekOffset);
+    const zones = getZones();
+    let totalMod = 0, totalVig = 0, totalRest = 0;
+    for (const d of days) { totalMod += d.mod; totalVig += d.vig; totalRest += d.rest; }
+    const total = totalMod + totalVig + totalRest || 1;
+    const { start, end } = getWeekRange(weekOffset);
+    const weekLabel = weekOffset === 0 ? 'This week' : `${fmtDateShort(start)} – ${fmtDateShort(end)}`;
+    content.innerHTML = `
+      <div class="week-selector">
+        <button class="week-btn" onclick="changeWeekZones(-1)">‹ Prev</button>
+        <span class="week-label">${weekLabel}</span>
+        <button class="week-btn" onclick="changeWeekZones(1)" ${weekOffset >= 0 ? 'disabled' : ''}>Next ›</button>
+      </div>
+      <div class="card">
+        <div class="card-label">Zone breakdown — weekly totals</div>
+        <div class="zone-row"><div class="zone-dot" style="background:#EF4444"></div><div class="zone-info"><div class="zone-name">Vigorous</div><div class="zone-range">≥ ${zones.vig} BPM · counts 2× toward CDC</div></div><div class="zone-mins">${totalVig} min</div></div>
+        <div class="zone-row"><div class="zone-dot" style="background:#3B82F6"></div><div class="zone-info"><div class="zone-name">Moderate</div><div class="zone-range">${zones.mod}–${zones.vig - 1} BPM · counts 1×</div></div><div class="zone-mins">${totalMod} min</div></div>
+        <div class="zone-row"><div class="zone-dot" style="background:var(--text3)"></div><div class="zone-info"><div class="zone-name">Below moderate</div><div class="zone-range">41–${zones.mod - 1} BPM · does not count</div></div><div class="zone-mins" style="color:var(--text2)">${totalRest} min</div></div>
+      </div>
+      <div class="card">
+        <div class="card-label">Proportion of active heart rate minutes</div>
+        <div style="display:flex;height:20px;border-radius:8px;overflow:hidden;gap:2px;margin-bottom:10px">
+          <div style="width:${Math.round(totalVig/total*100)}%;background:#EF4444;min-width:${totalVig?2:0}px"></div>
+          <div style="width:${Math.round(totalMod/total*100)}%;background:#3B82F6;min-width:${totalMod?2:0}px"></div>
+          <div style="width:${Math.round(totalRest/total*100)}%;background:var(--surface2);min-width:${totalRest?2:0}px"></div>
+        </div>
+        <div style="display:flex;gap:16px;font-size:12px;color:var(--text2)">
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#EF4444;margin-right:4px;vertical-align:middle"></span>Vigorous ${Math.round(totalVig/total*100)}%</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#3B82F6;margin-right:4px;vertical-align:middle"></span>Moderate ${Math.round(totalMod/total*100)}%</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--surface2);border:0.5px solid var(--border);margin-right:4px;vertical-align:middle"></span>Below ${Math.round(totalRest/total*100)}%</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">CDC equivalence</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6">
+          Your <strong style="color:var(--text)">${totalVig} vigorous min</strong> = <strong style="color:var(--text)">${totalVig * 2} moderate-equivalent minutes</strong>.<br>
+          Combined CDC score: <strong style="color:var(--text)">${Math.round(Math.min((totalMod/150 + totalVig/75),1)*100)}%</strong> of weekly goal.
+        </div>
+      </div>`;
+  } catch(e) {
+    content.innerHTML = `<div class="error-msg">${e.message === 'auth' ? 'Session expired. Please reconnect in Setup.' : 'Error loading data.'}</div>`;
+  }
+}
+
+function changeWeek(delta) { weekOffset = Math.min(weekOffset + delta, 0); renderDashboard(); }
+function changeWeekDays(delta) { weekOffset = Math.min(weekOffset + delta, 0); renderDays(); }
+function changeWeekZones(delta) { weekOffset = Math.min(weekOffset + delta, 0); renderZonesPage(); }
+
+async function init() {
+  const savedToken = localStorage.getItem('google_token');
+  const savedClient = localStorage.getItem('google_client_id');
+  if (savedClient) $('client-id-input').value = savedClient;
+  loadSetupUI();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('code')) {
+    try {
+      await handleCallback();
+      $('header-sub').textContent = 'Google Health connected';
+      $('disconnect-btn').style.display = 'block';
+      showPage('dashboard');
+      return;
+    } catch(e) {
+      $('connect-msg').innerHTML = `<div class="error-msg">Connection failed: ${e.message}. Please try again.</div>`;
+      showPage('setup');
+      return;
+    }
+  }
+
+  if (savedToken) {
+    accessToken = savedToken;
+    $('header-sub').textContent = 'Google Health connected';
+    $('disconnect-btn').style.display = 'block';
+    renderDashboard();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
